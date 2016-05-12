@@ -12,7 +12,7 @@ case "${1}" in
         *)
 #Apache
         status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /usr/local/apache/conf/includes/pre_main_global.conf &> /dev/null || echo err')
-	if [ "x${status}" = "xerr" ]
+	if [ "x${status}" == "xerr" ]
 	then 
 		ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'mkdir -p /usr/local/apache/conf/includes && touch /usr/local/apache/conf/includes/pre_main_global.conf && echo -en "SSLProtocol -All +TLSv1 \nSSLHonorCipherOrder On\n"> /usr/local/apache/conf/includes/pre_main_global.conf'
 		output=$(echo "Created")
