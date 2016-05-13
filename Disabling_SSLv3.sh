@@ -17,10 +17,10 @@ case "${1}" in
 		ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'mkdir -p /usr/local/apache/conf/includes && touch /usr/local/apache/conf/includes/pre_main_global.conf && echo -en "SSLProtocol -All +TLSv1 \nSSLHonorCipherOrder On\n"> /usr/local/apache/conf/includes/pre_main_global.conf'
 		output=$(echo "Created")
 	else
-		entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -iE "SSLProtocol *|nSSLHonorCipherOrder *" /usr/local/apache/conf/includes/pre_main_global.conf')
+		entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -iE "SSLProtocol *|SSLHonorCipherOrder *" /usr/local/apache/conf/includes/pre_main_global.conf')
 		if [ "x${entry}" == "x" ]
 			then 
-			ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i "s/SSLProtocol */SSLProtocol All +TLSv1;s/nSSLHonorCipherOrder */nSSLHonorCipherOrder On" /usr/local/apache/conf/includes/pre_main_global.conf'
+			ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/SSLProtocol.*/SSLProtocol All +TLSv1/;s/SSLHonorCipherOrder.*/SSLHonorCipherOrder On/' /usr/local/apache/conf/includes/pre_main_global.conf'
 			output=$(echo "Changed")
 		fi
  	fi
