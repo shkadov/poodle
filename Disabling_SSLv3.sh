@@ -4,7 +4,7 @@
 #
 # Action Disable Support for SSLv3 on a cPanel on target VM.
 
-
+        
 case "${1}" in
         outputFormat)
                 echo "Apache|WHM|Dovecot|Courier|FTP SSL|Exim|FDisk"
@@ -26,73 +26,48 @@ case "${1}" in
  	fi
 		ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/scripts/rebuildhttpdconf && service httpd restart'
 
-#WHM
-        status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /var/cpanel/conf/cpsrvd/ssl_socket_args &> /dev/null || echo err')
-        if [ "x${status}" = "xerr" ]
-        then
-                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'mkdir -p var/cpanel/conf/cpsrvd && touch /var/cpanel/conf/cpsrvd/ssl_socket_args && echo "SSL_version SSLv23:!SSLv2:!SSLv3" > /var/cpanel/conf/cpsrvd/ssl_socket_args'
-                output=$(echo "Created")
-	else
-                entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -i "SSL_version *" /var/cpanel/conf/cpsrvd/ssl_socket_args')
-                if [ "x${entry}" != "SSL_version SSLv23:!SSLv2:!SSLv3" ]
-                	then
-                	ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i "s/SSL_version */SSL_version SSLv23:!SSLv2:!SSLv3/" /var/cpanel/conf/cpsrvd/ssl_socket_args'
-                	output=$(echo "Changed")
-                fi
-	        ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/whostmgr/bin/whostmgr2 docpsrvdconfiguration'
-	fi
-#IMAP
-        status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /var/cpanel/conf/dovecot/main &> /dev/null || echo err')
-        if [ "x${status}" = "xerr" ]
-        then
-                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'mkdir -p /var/cpanel/conf/dovecot && touch /var/cpanel/conf/dovecot/main && echo "SSL_protocol !SSLv2 !SSLv3" > /var/cpanel/conf/dovecot/main'
-                output=$(echo "Created")
-        else
+#WHM, Webmail, WebDisk
 
-                entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -i "SSL_protocol *" /var/cpanel/conf/dovecot/main')
-                if [ "x${entry}" != "SSL_protocol !SSLv2 !SSLv3" ]
-                	then
-                	ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i "s/SSL_protocol */SSL_protocol !SSLv2 !SSLv3/" /var/cpanel/conf/dovecot/main'
-                	output=$(echo "Changed")
+        ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/upcp'
+        output=$(echo "Updated")
+
+#Dovecot
+        
+        mailserver=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/setupmailserver --current |grep dovecot &> /dev/null || echo err')
+        if [ "x${status}" == "Current mailserver type: dovecot" ]
+        then 
+                mainfile=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /var/cpanel/templates/dovecot2.2/main.local &> /dev/null || echo err')
+                if [ "x${status}" == "xerr" ]
+                then ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cp /var/cpanel/templates/dovecot2.2/main.default /var/cpanel/templates/dovecot2.2/main.local && sed -i 's/SSLv2/!SSLv2/g' && sed -i 's/SSLv3/!SSLv3/g''
+                output=$(echo "Created")
                 fi
-        	ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/whostmgr/bin/whostmgr2 savedovecotsetup'
-	fi
+        else
+                entry=$$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -iE "SSLv2|SSLv3" /var/cpanel/templates/dovecot2.2/main.local')
+                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/SSLv2/!SSLv2/g';sed -i 's/SSLv3/!SSLv3/g' /var/cpanel/templates/dovecot2.2/main.local'
+                output=$(echo "Changed")        
+        fi
+                ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/builddovecotconf && /scripts/restartsrv_dovecot'
+
 #FTP
-	status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /var/cpanel/pureftpd/main &> /dev/null || echo err')
-        if [ "x${status}" = "xerr" ]
-        then
-                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'mkdir -p /var/cpanel/pureftpd && touch /var/cpanel/pureftpd/main && echo "TLSCipherSuite HIGH:MEDIUM:+TLSv1:!SSLv2:!SSLv3" > /var/cpanel/pureftpd/main'
-                output=$(echo "Created")
+        ftpserver=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'grep ftpserver /var/cpanel/cpanel.config &> /dev/null || echo err')
+        if [ "x${status}" == "ftpserver=pure-ftpd" ]
+        then 
+                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/TLSCipherSuite:.*/TLSCipherSuite: HIGH:MEDIUM:+TLSv1:!SSLv2:+SSLv3/' /var/cpanel/conf/pureftpd/main')
+                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/bin/build_ftp_conf && service pure-ftpd restart'
         else
+                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/TLSCipherSuite:.*/TLSCipherSuite: HIGH:MEDIUM:+TLSv1:!SSLv2:+SSLv3/' /var/cpanel/conf/proftpd/main'
+                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/scripts/restartsrv_proftpd'
+        fi
+                output=$(echo "Changed")
+                
 
-                entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -i "TLSCipherSuite" /var/cpanel/conf/pureftpd/main')
-                if [ "x${entry}" != "TLSCipherSuite HIGH:MEDIUM:+TLSv1:!SSLv2:!SSLv3" ]
-                	then
-                	ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i "s/TLSCipherSuite */TLSCipherSuite  HIGH:MEDIUM:+TLSv1:!SSLv2:!SSLv3/" /var/cpanel/conf/pureftpd/main'
-                	output=$(echo "Changed")
-                fi
-        	ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/bin/build_ftp_conf && service pure-ftpd restart'
-	fi
-#Exim
-	status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /etc/exim.conf.local &> /dev/null || echo err')
-        if [ "x${status}" = "xerr" ]
-        then
-                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'touch /etc/exim.conf.local && echo "@CONFIG@ tls_require_ciphers = ALL:-SSLv3:!ADH:RC4+RSA:+HIGH:+MEDIUM:-LOW:-SSLv2:-EXP" > /etc/exim.conf.local'
-                output=$(echo "Created")
-        else
-
-                entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -i "@CONFIG@ tls_require_ciphers" /etc/exim.conf.local')
-                if [ "x${entry}" != "ALL:-SSLv3:!ADH:RC4+RSA:+HIGH:+MEDIUM:-LOW:-SSLv2:-EXP" ]
-                	then
-                	ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i "s/@CONFIG@ tls_require_ciphers = */@CONFIG@ tls_require_ciphers = ALL:-SSLv3:!ADH:RC4+RSA:+HIGH:+MEDIUM:-LOW:-SSLv2:-EXP/" /etc/exim.conf.local'
-                	output=$(echo "Changed")
-                fi
-                ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/scripts/buildeximconf && service exim restart'
-	fi
         ;;
 esac
 
 echo "${outPut}"
 
 exit 0
+
+
+
 
