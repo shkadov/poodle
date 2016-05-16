@@ -33,7 +33,7 @@ case "${1}" in
 
 #Dovecot
         
-        mailserver=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/setupmailserver --current |grep dovecot &> /dev/null || echo err')
+        status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/setupmailserver --current |grep dovecot &> /dev/null || echo err')
         if [ "x${status}" == "Current mailserver type: dovecot" ]
         then 
                 mainfile=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /var/cpanel/templates/dovecot2.2/main.local &> /dev/null || echo err')
@@ -49,7 +49,7 @@ case "${1}" in
                 ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/builddovecotconf && /scripts/restartsrv_dovecot'
 
 #FTP
-        ftpserver=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'grep ftpserver /var/cpanel/cpanel.config &> /dev/null || echo err')
+        status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'grep ftpserver /var/cpanel/cpanel.config &> /dev/null || echo err')
         if [ "x${status}" == "ftpserver=pure-ftpd" ]
         then 
                 ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/TLSCipherSuite:.*/TLSCipherSuite: HIGH:MEDIUM:+TLSv1:!SSLv2:+SSLv3/' /var/cpanel/conf/pureftpd/main')
