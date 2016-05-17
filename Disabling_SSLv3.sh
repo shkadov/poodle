@@ -25,12 +25,12 @@ case "${1}" in
 		fi
  	fi
 		ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/scripts/rebuildhttpdconf && service httpd restart'
-
+:'
 #WHM, Webmail, WebDisk
 
         ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/upcp'
         output=$(echo "Updated")
-
+'
 #Dovecot & Courier
         
         status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/setupmailserver --current &> /dev/null')
