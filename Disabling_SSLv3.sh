@@ -33,12 +33,13 @@ case "${1}" in
 '
 #Dovecot & Courier
         
-        status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/setupmailserver --current &> /dev/null')
-        if [ "x${status}" == "Current mailserver type: dovecot" ]
+        status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/setupmailserver --current |grep -i "dovecot" &> /dev/null')
+        if [ "x${status}" == "xCurrent mailserver type: dovecot" ]
         then 
                 mainfile=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /var/cpanel/templates/dovecot2.2/main.local &> /dev/null || echo err')
-                if [ "x${status}" == "xerr" ]
-                then ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cp /var/cpanel/templates/dovecot2.2/main.default /var/cpanel/templates/dovecot2.2/main.local && sed -i 's/SSLv2/!SSLv2/g' && sed -i 's/SSLv3/!SSLv3/g''
+                if [ "x${mainfile}" == "xerr" ]
+                then 
+                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cp /var/cpanel/templates/dovecot2.2/main.default /var/cpanel/templates/dovecot2.2/main.local && sed -i 's/SSLv2/!SSLv2/g' /var/cpanel/templates/dovecot2.2/main.local && sed -i 's/SSLv3/!SSLv3/g' /var/cpanel/templates/dovecot2.2/main.local'
                 output=$(echo "Created")
                 fi
         else
@@ -47,7 +48,7 @@ case "${1}" in
                 output=$(echo "Changed")        
         fi
                 ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/builddovecotconf && /scripts/restartsrv_dovecot'
-        if [ "x${status}" == "Current mailserver type: courier" ]
+        if [ "x${status}" == "xCurrent mailserver type: courier" ]
         then 
                 mainfile=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /var/cpanel/courierconfig.yaml &> /dev/null')
                 
