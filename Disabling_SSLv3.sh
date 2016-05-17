@@ -67,7 +67,23 @@ case "${1}" in
                 ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/scripts/restartsrv_proftpd'
         fi
                 output=$(echo "Changed")
-                
+#Exim
+
+         status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /etc/exim.conf.local &> /dev/null || echo err')               
+         if [ "x${status}" == "xerr" ]
+        then 
+                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'touch /etc/exim.conf.local && echo -en "@CONFIG@\n
+tls_require_ciphers = ALL:-SSLv3:!ADH:RC4+RSA:+HIGH:+MEDIUM:-LOW:-SSLv2:-EXP\n"> /etc/exim.conf.local'
+                output=$(echo "Created")
+        else
+                entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -i "tls_require_ciphers = " /etc/exim.conf.local')
+                if [ "x${entry}" == "x" ]
+                        then 
+                        ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/tls_require_ciphers =.*/tls_require_ciphers = ALL:-SSLv3:!ADH:RC4+RSA:+HIGH:+MEDIUM:-LOW:-SSLv2:-EXP/' /etc/exim.conf.local'
+                        output=$(echo "Changed")
+                fi
+        fi
+                ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/scripts/buildeximconf && service exim restart'
 
         ;;
 esac
