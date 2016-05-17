@@ -20,7 +20,7 @@ case "${1}" in
 		entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -iE "SSLProtocol.*|SSLHonorCipherOrder.*" /usr/local/apache/conf/includes/pre_main_global.conf')
 		if [ "x${entry}" == "x" ]
 			then 
-			ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/SSLProtocol.*/SSLProtocol All +TLSv1/;s/SSLHonorCipherOrder.*/SSLHonorCipherOrder On/' /usr/local/apache/conf/includes/pre_main_global.conf'
+			ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/^.*SSLProtocol.*/SSLProtocol All +TLSv1/;s/^.*SSLHonorCipherOrder.*/SSLHonorCipherOrder On/' /usr/local/apache/conf/includes/pre_main_global.conf'
 			output=$(echo "Changed")
 		fi
  	fi
@@ -61,10 +61,10 @@ case "${1}" in
         status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'grep ftpserver /var/cpanel/cpanel.config &> /dev/null || echo err')
         if [ "x${status}" == "ftpserver=pure-ftpd" ]
         then 
-                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/TLSCipherSuite:.*/TLSCipherSuite: HIGH:MEDIUM:+TLSv1:!SSLv2:+SSLv3/' /var/cpanel/conf/pureftpd/main'
+                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/^.*TLSCipherSuite:.*/TLSCipherSuite: HIGH:MEDIUM:+TLSv1:!SSLv2:+SSLv3/' /var/cpanel/conf/pureftpd/main'
                 ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/bin/build_ftp_conf && service pure-ftpd restart'
         else
-                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/TLSCipherSuite:.*/TLSCipherSuite: HIGH:MEDIUM:+TLSv1:!SSLv2:+SSLv3/' /var/cpanel/conf/proftpd/main'
+                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/^.*TLSCipherSuite:.*/TLSCipherSuite: HIGH:MEDIUM:+TLSv1:!SSLv2:+SSLv3/' /var/cpanel/conf/proftpd/main'
                 ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/scripts/restartsrv_proftpd'
         fi
                 output=$(echo "Changed")
@@ -80,7 +80,7 @@ tls_require_ciphers = ALL:-SSLv3:!ADH:RC4+RSA:+HIGH:+MEDIUM:-LOW:-SSLv2:-EXP\n">
                 entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -i "tls_require_ciphers = " /etc/exim.conf.local')
                 if [ "x${entry}" == "x" ]
                         then 
-                        ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/tls_require_ciphers =.*/tls_require_ciphers = ALL:-SSLv3:!ADH:RC4+RSA:+HIGH:+MEDIUM:-LOW:-SSLv2:-EXP/' /etc/exim.conf.local'
+                        ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/^.*tls_require_ciphers =.*/tls_require_ciphers = ALL:-SSLv3:!ADH:RC4+RSA:+HIGH:+MEDIUM:-LOW:-SSLv2:-EXP/' /etc/exim.conf.local'
                         output=$(echo "Changed")
                 fi
         fi
