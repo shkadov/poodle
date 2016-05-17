@@ -17,7 +17,7 @@ case "${1}" in
 		ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'mkdir -p /usr/local/apache/conf/includes && touch /usr/local/apache/conf/includes/pre_main_global.conf && echo -en "SSLProtocol -All +TLSv1 \nSSLHonorCipherOrder On\n"> /usr/local/apache/conf/includes/pre_main_global.conf'
 		output=$(echo "Created")
 	else
-		entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -iE "SSLProtocol *|SSLHonorCipherOrder *" /usr/local/apache/conf/includes/pre_main_global.conf')
+		entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -iE "SSLProtocol.*|SSLHonorCipherOrder.*" /usr/local/apache/conf/includes/pre_main_global.conf')
 		if [ "x${entry}" == "x" ]
 			then 
 			ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/SSLProtocol.*/SSLProtocol All +TLSv1/;s/SSLHonorCipherOrder.*/SSLHonorCipherOrder On/' /usr/local/apache/conf/includes/pre_main_global.conf'
@@ -31,9 +31,9 @@ case "${1}" in
         ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/upcp'
         output=$(echo "Updated")
 
-#Dovecot
+#Dovecot & Courier
         
-        status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/setupmailserver --current |grep dovecot &> /dev/null || echo err')
+        status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/setupmailserver --current &> /dev/null')
         if [ "x${status}" == "Current mailserver type: dovecot" ]
         then 
                 mainfile=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /var/cpanel/templates/dovecot2.2/main.local &> /dev/null || echo err')
@@ -42,17 +42,25 @@ case "${1}" in
                 output=$(echo "Created")
                 fi
         else
-                entry=$$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -iE "SSLv2|SSLv3" /var/cpanel/templates/dovecot2.2/main.local')
+                entry=$(ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} 'grep -iE "SSLv2|SSLv3" /var/cpanel/templates/dovecot2.2/main.local')
                 ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/SSLv2/!SSLv2/g';sed -i 's/SSLv3/!SSLv3/g' /var/cpanel/templates/dovecot2.2/main.local'
                 output=$(echo "Changed")        
         fi
                 ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/scripts/builddovecotconf && /scripts/restartsrv_dovecot'
+        if [ "x${status}" == "Current mailserver type: courier" ]
+        then 
+                mainfile=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'cat /var/cpanel/courierconfig.yaml &> /dev/null')
+                
+                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/"TLS_PROTOCOL":.*/"TLS_PROTOCOL": 'TLSv1'/';sed -i 's/"TLS_STARTTLS_PROTOCOL":.*/"TLS_STARTTLS_PROTOCOL": 'TLSv1'/' /var/cpanel/courierconfig.yaml'
+                output=$(echo "Changed")        
+        fi
+                ssh -q -o ConnectTimeOut=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/bin/build_courier_conf'        
 
 #FTP
         status=$(ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'grep ftpserver /var/cpanel/cpanel.config &> /dev/null || echo err')
         if [ "x${status}" == "ftpserver=pure-ftpd" ]
         then 
-                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/TLSCipherSuite:.*/TLSCipherSuite: HIGH:MEDIUM:+TLSv1:!SSLv2:+SSLv3/' /var/cpanel/conf/pureftpd/main')
+                ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/TLSCipherSuite:.*/TLSCipherSuite: HIGH:MEDIUM:+TLSv1:!SSLv2:+SSLv3/' /var/cpanel/conf/pureftpd/main'
                 ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} '/usr/local/cpanel/bin/build_ftp_conf && service pure-ftpd restart'
         else
                 ssh -q -o ConnectTimeout=20 -o StrictHostKeyChecking=no ${1} 'sed -i 's/TLSCipherSuite:.*/TLSCipherSuite: HIGH:MEDIUM:+TLSv1:!SSLv2:+SSLv3/' /var/cpanel/conf/proftpd/main'
